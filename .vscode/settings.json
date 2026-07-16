@@ -1,0 +1,14 @@
+{
+  "files.exclude": {
+    "**/.agents": true,
+    "**/.pytest_cache": true,
+    "**/.pytest_tmp": true,
+    "**/.ruff_cache": true,
+    "**/__pycache__": true
+  },
+  "search.exclude": {
+    "**/.pytest_tmp": true,
+    "**/.venv": true,
+    "**/outputs": true
+  }
+}

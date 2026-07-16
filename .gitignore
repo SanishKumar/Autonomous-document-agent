@@ -1,0 +1,13 @@
+.env
+.venv/
+.runtime-deps/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp/
+outputs/.test-*/
+.ruff_cache/
+.coverage
+htmlcov/
+outputs/*.docx
+outputs/rendered/
