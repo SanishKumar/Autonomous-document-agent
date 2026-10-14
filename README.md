@@ -72,11 +72,13 @@ walkthrough with pre-created fictional accounts, use the [offline preview](#test
 - Section-specific discussions, replies, resolution, and attributed review decisions.
 - Named review handoffs and a personal inbox for assigned and requested reviews.
 - Compare any two saved versions, including title, text, lists and table changes, without model calls.
+- Review delta brief: changed sections since an earlier approval, plus unresolved feedback on earlier drafts.
 - Revocable sessions, password changes, expiring invitations and owner-managed access.
 - Persistent document library with search and status filters.
 - Styled `.docx` export, including tables, assumptions and constraint decisions.
 - Two clearly labeled fictional examples you can explore, edit and export without API calls.
 - The original `POST /agent` and Swagger interface remain available.
+- Local backup, checksum verification and restore-to-new-directory commands; no cloud uploads.
 
 This is a **single-team, self-hosted workspace**, not a hosted multi-tenant SaaS. It uses FastAPI,
 Pydantic, SQLite, Argon2, `python-docx`, and a dependency-free browser interface. No frontend build is needed.
@@ -171,6 +173,16 @@ diff; moved text may appear as a removal and addition. Neither version is modifi
 
 ## Hand a draft to a reviewer
 
+**What needs another look?** appears in Team review. It compares the current draft with the latest
+earlier version that received an approval, highlights changed/moved sections and changed summary,
+title or conclusion, and surfaces unresolved feedback from that baseline through intervening versions.
+The baseline is a historical approval, even if later withdrawn; it is not a claim that approval is
+still valid. This deterministic brief costs no model tokens and never approves a draft or moves
+comments automatically. Expand **Inspect before-and-after text** to see the full baseline diff
+without leaving Team review. The brief remains visible when toggling earlier discussions.
+Renamed or ambiguous duplicate headings are conservatively shown as
+additions/removals. If there is no earlier approved version, review the entire draft.
+
 1. As an editor or owner, open a document and choose **Team review**.
 2. Under **Bring a teammate in**, choose another active owner/reviewer and add a handoff note.
 3. Click **Request review**. That exact version appears in their **Review inbox → Assigned to me**,
@@ -207,6 +219,7 @@ bounded to the latest 200 relevant requests and refreshed explicitly.
 | `POST /api/documents/{id}/versions/{n}/restore` | Restore as a new version |
 | `POST /api/documents/{id}/approval` | Approve/unapprove the current version |
 | `GET /api/documents/{id}/review` | Version-bound discussions and review decisions |
+| `GET /api/documents/{id}/review-impact` | Changed sections and older unresolved feedback since a historical approval |
 | `POST /api/documents/{id}/comments` | Comment on a version or section |
 | `POST /api/documents/{id}/comments/{thread}/replies` | Reply to an open discussion |
 | `POST /api/documents/{id}/comments/{thread}/resolve` | Resolve or reopen |
@@ -299,6 +312,9 @@ the examples against a live server **does** consume provider quota. The command-
 for login when accounts are enabled; the HTTP examples require your session cookie and CSRF header.
 
 ## Storage and limits
+
+See [backup and recovery](docs/backup-and-recovery.md) for the snapshot, verification and safe
+restore commands. Backups exclude active sessions and invitation links and are not encrypted.
 
 `OUTPUTS_DIR` (default `outputs/`) contains `workspace.sqlite3`, original generated Word files and
 versioned `exports/`. Back up the directory with the server stopped. These files and `.env` are

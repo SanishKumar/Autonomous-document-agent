@@ -1,3 +1,5 @@
+import { comparisonResult } from "./comparison.js";
+
 export function createTeamUI({ state, api, post, esc, icon, date, shell, toast, onSession, onLogout, renderDocument, handoffs }) {
   const owner = () => state.session?.user?.role === "owner";
   const canReview = () => ["owner", "reviewer"].includes(state.session?.user?.role);
@@ -25,7 +27,7 @@ export function createTeamUI({ state, api, post, esc, icon, date, shell, toast, 
     shell(`<div class="home team-page"><div class="eyebrow">BETTER, TOGETHER</div><section class="hero"><div><h1>A shared space.<br><em>A stronger point of view.</em></h1><p>${esc(data.name)} · ${data.members.filter((m) => m.active).length} active members.<br>Different roles. One considered result.</p></div></section><div class="team-columns"><section><div class="section-title"><h2>The people in your room</h2><button class="text-button" data-team="refresh">Refresh</button></div><div class="member-list">${data.members.map((m) => `<div class="member-row ${m.active ? "" : "inactive"}"><span class="profile-avatar">${esc(initials(m.name))}</span><div class="member-details"><strong>${esc(m.name)}${m.id === state.session.user.id ? ' <span class="muted">(you)</span>' : ""}</strong><small>${esc(m.email)}</small><span class="role-tag">${esc(m.role)}${m.active ? "" : " · Deactivated"}</span></div>${owner() ? `<form data-team-form="access" data-member="${m.id}"><select name="role" aria-label="Role for ${esc(m.name)}">${["owner", "editor", "reviewer"].map((r) => `<option ${r === m.role ? "selected" : ""}>${r}</option>`).join("")}</select><label class="check-label"><input type="checkbox" name="active" ${m.active ? "checked" : ""}>Active</label><button class="secondary" type="submit">Save</button>${error}</form>` : ""}</div>`).join("")}</div>${owner() ? `<section class="detail-card invite-history"><h3>Invitations</h3>${data.invitations.length ? data.invitations.map((i) => `<div class="invitation-row"><div><strong>${esc(i.email)}</strong><small>${esc(i.role)} · ${esc(i.status)}</small></div>${i.status === "pending" ? `<button class="text-button danger" data-team="revoke" data-id="${i.id}">Revoke</button>` : ""}</div>`).join("") : '<p class="muted">No invitations yet.</p>'}</section>` : ""}</section><aside>${owner() ? `<div class="detail-card invite-card"><span class="eyebrow">PULL UP A CHAIR</span><h2>Invite a teammate</h2><p>Invite by email, then share their private link yourself. No email is sent automatically.</p><form data-team-form="invite">${input("email", "Their email", "email", 'maxlength="254"')}<div class="field"><label for="invite-role">Their role</label><select id="invite-role" name="role"><option value="reviewer">Reviewer — discuss & approve</option><option value="editor">Editor — create & edit</option></select></div>${error}<button class="primary" type="submit">Create invitation ${icon("plus")}</button></form><div id="invite-result" role="status"></div></div>` : ""}<div class="detail-card role-guide"><h3>A role for every contribution</h3><p><strong>Owners</strong> manage access, create, edit, and approve.</p><p><strong>Editors</strong> turn briefs into drafts, edit, and restore versions.</p><p><strong>Reviewers</strong> discuss the details and approve or request changes.</p><p class="muted">Everyone can read, comment, resolve discussions, and export. All documents in this workspace are shared with all active members.</p></div></aside></div></div>`, "Team");
   }
 
-  function reviewContent() {
+  function baseReviewContent() {
     if (!state.doc.artifact) return '<div class="detail-panel"><h2>The conversation starts with a draft.</h2><p>Review tools appear when the document is ready.</p></div>';
     if (!reviewData || reviewData.docId !== state.doc.id) return '<div class="detail-panel"><p>Loading team review…</p></div>';
     const d = state.doc;
@@ -37,11 +39,25 @@ export function createTeamUI({ state, api, post, esc, icon, date, shell, toast, 
 
   async function loadReview() {
     const id = state.doc.id;
-    const [doc, review] = await Promise.all([api(`/api/documents/${id}`), api(`/api/documents/${id}/review`), handoffs.loadDocument(id)]);
+      const [doc, review, , impact] = await Promise.all([api(`/api/documents/${id}`), api(`/api/documents/${id}/review`), handoffs.loadDocument(id), api(`/api/documents/${id}/review-impact`)]);
     if (state.page !== "document" || state.doc?.id !== id || state.tab !== "review") return;
     state.doc = doc;
-    reviewData = { ...review, docId: id };
+    reviewData = { ...review, docId: id, impact };
     renderDocument();
+  }
+
+  function reviewContent() {
+      const html = baseReviewContent();
+      const impact = reviewData?.impact;
+      if (impact && reviewData.docId === state.doc?.id && impact.current_version === state.doc.version) {
+        const content = impact.baseline_version == null
+          ? '<p>No earlier approved version yet. Review this draft in full.</p>'
+          : `<p>Compared with v${impact.baseline_version}, previously approved by ${esc(impact.approved_by)}.</p><ul>${impact.changed_fields.map(f => `<li>${esc(f.replaceAll("_", " "))} changed</li>`).join("")}${impact.changes.map(c => `<li><strong>${esc(c.heading)}</strong> — ${esc(c.kind.replaceAll("_", " "))}</li>`).join("")}</ul>${!impact.changes.length && !impact.changed_fields.length ? '<p>No saved text changes from the baseline.</p>' : ''}<h4>Unresolved feedback on earlier drafts (${impact.open_feedback.length})</h4>${impact.open_feedback.map(f => `<blockquote><strong>v${f.version} · ${esc(f.section_title)}</strong><p>${esc(f.body)}</p></blockquote>`).join("")}`;
+        const diff = impact.text_changes ? `<details class="review-delta-text"><summary>Inspect before-and-after text</summary>${comparisonResult(impact.text_changes, esc)}</details>` : "";
+        const card = `<section class="detail-card"><div class="eyebrow">REVIEW DELTA BRIEF</div><h3>What needs another look?</h3>${content}${diff}<p class="muted">Attention hints, not a safety verdict. The baseline is a historical approval, which may later have been withdrawn. Renamed or duplicate headings may appear as additions and removals. Earlier feedback stays on its original version.</p></section>`;
+        return html.replace('<div class="review-columns"><section>', '<div class="review-columns"><section>' + card);
+      }
+      return html;
   }
 
   const accountSettings = () => state.session.auth_enabled ? `<hr class="version-divider"><div class="settings-line"><span>Signed in as</span><strong>${esc(state.session.user.name)} · ${esc(state.session.user.role)}</strong></div><details class="password-settings"><summary>Change your password</summary><form data-team-form="password">${input("current_password", "Current password", "password", 'autocomplete="current-password" maxlength="128"')}${input("new_password", "New password", "password", 'autocomplete="new-password" minlength="12" maxlength="128"')}<small class="muted">At least 12 characters. This signs out your other sessions.</small>${error}<button class="secondary" type="submit">Update password</button></form></details><button class="secondary danger" data-team="logout">Sign out</button>` : "";

@@ -16,3 +16,7 @@ outputs/.setup-token
 outputs/exports/
 outputs/.ui-test/
 outputs/screenshots/
+backups/
+outputs-restored/
+.briefroom-backup-*/
+.briefroom-restore-*/

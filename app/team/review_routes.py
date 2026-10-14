@@ -6,10 +6,17 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.team.auth import identity, require_role
+from app.team.impact import review_impact
 from app.team.review import actor_info
 from app.workspace.store import ConflictError
 
 router = APIRouter(prefix="/api/documents", tags=["review"])
+
+
+@router.get("/{doc_id}/review-impact")
+async def impact(doc_id: str, request: Request):
+    repository(request, doc_id)
+    return review_impact(request.app.state.workspace, doc_id)
 
 
 class Reply(BaseModel):

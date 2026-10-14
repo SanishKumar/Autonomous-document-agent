@@ -114,3 +114,6 @@
 .comparison-removed { background:#fff0ed; border-left:3px solid #a64035; padding:12px; }
 .comparison-added { background:#edf5e9; border-left:3px solid #456f38; padding:12px; }
 #comparison-result details { padding:10px 0; }
+.review-delta-text { margin: 16px 0; }
+.review-delta-text p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.review-delta-text summary { cursor: pointer; padding: 8px 0; }
