@@ -1,0 +1,5 @@
+/* System fonts keep the workspace private and usable offline. */
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

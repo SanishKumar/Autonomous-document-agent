@@ -31,7 +31,9 @@ class FakeLLM:
                     return {
                         "score": 7,
                         "passed": False,
-                        "strengths": ["The phased architecture is credible and addresses language support."],
+                        "strengths": [
+                            "The phased architecture is credible and addresses language support."
+                        ],
                         "missing_items": [
                             "Budget allocations need explicit validation gates.",
                             "Pilot and production availability targets should be separated.",
@@ -61,11 +63,23 @@ class FakeLLM:
     def _plan(complex_request: bool) -> dict[str, Any]:
         if complex_request:
             tools = [
-                ("analyze_requirements", "Analyze technical, operational, schedule, and budget requirements"),
-                ("resolve_constraints", "Resolve conflicts between scope, capacity, availability, time, and budget"),
+                (
+                    "analyze_requirements",
+                    "Analyze technical, operational, schedule, and budget requirements",
+                ),
+                (
+                    "resolve_constraints",
+                    "Resolve conflicts between scope, capacity, availability, time, and budget",
+                ),
                 ("create_outline", "Design a decision-oriented technical proposal structure"),
-                ("draft_document", "Draft a phased proposal with architecture, delivery, cost, and risks"),
-                ("review_document", "Check every constraint and revise unsupported commitments once"),
+                (
+                    "draft_document",
+                    "Draft a phased proposal with architecture, delivery, cost, and risks",
+                ),
+                (
+                    "review_document",
+                    "Check every constraint and revise unsupported commitments once",
+                ),
                 ("generate_docx", "Generate the reviewed proposal as a formatted Word document"),
             ]
             tasks = []
@@ -108,10 +122,16 @@ class FakeLLM:
             }
 
         tools = [
-            ("analyze_requirements", "Analyze objectives, audience, deliverables, and explicit constraints"),
+            (
+                "analyze_requirements",
+                "Analyze objectives, audience, deliverables, and explicit constraints",
+            ),
             ("create_outline", "Create a project-plan outline for a 90-day rollout"),
             ("draft_document", "Draft phases, owners, milestones, risks, and success metrics"),
-            ("review_document", "Review completeness and revise once if the quality threshold is missed"),
+            (
+                "review_document",
+                "Review completeness and revise once if the quality threshold is missed",
+            ),
             ("generate_docx", "Generate the reviewed plan as a formatted Word document"),
         ]
         tasks = []
@@ -236,7 +256,11 @@ class FakeLLM:
         headings = (
             [
                 ("Purpose and recommendation", "Frame the decision and bounded pilot", "callout"),
-                ("Requirements and feasibility", "Separate stated targets from evidence gaps", "bullets"),
+                (
+                    "Requirements and feasibility",
+                    "Separate stated targets from evidence gaps",
+                    "bullets",
+                ),
                 ("Target architecture", "Describe the on-premise components and controls", "prose"),
                 ("Six-week delivery plan", "Show phases, owners, and exit gates", "table"),
                 ("Budget envelope", "Allocate the pilot budget and state exclusions", "table"),
@@ -273,14 +297,28 @@ class FakeLLM:
             )
             budget_rows = (
                 [
-                    ["Integration and workflow", "90,000", "Connect knowledge, escalation, and audit paths"],
-                    ["Evaluation and language QA", "70,000", "Hindi/English test set and native-speaker review"],
-                    ["Observability and load testing", "80,000", "Metrics, dashboards, failure and capacity tests"],
+                    [
+                        "Integration and workflow",
+                        "90,000",
+                        "Connect knowledge, escalation, and audit paths",
+                    ],
+                    [
+                        "Evaluation and language QA",
+                        "70,000",
+                        "Hindi/English test set and native-speaker review",
+                    ],
+                    [
+                        "Observability and load testing",
+                        "80,000",
+                        "Metrics, dashboards, failure and capacity tests",
+                    ],
                     ["Contingency", "60,000", "Model tuning and integration uncertainty"],
                     ["Total", "300,000", "Pilot cap, subject to week-one validation"],
                 ]
                 if revised
-                else [["Pilot delivery envelope", "300,000", "Detailed validation during discovery"]]
+                else [
+                    ["Pilot delivery envelope", "300,000", "Detailed validation during discovery"]
+                ]
             )
             return {
                 "executive_summary": (
@@ -335,12 +373,48 @@ class FakeLLM:
                         "table": {
                             "headers": ["Week", "Focus", "Key outputs", "Owner", "Exit gate"],
                             "rows": [
-                                ["1", "Discovery", "Traffic assumptions, intents, data and hardware inventory", "Product + Infra", "Scope and test plan approved"],
-                                ["2", "Foundation", "Model benchmark, retrieval baseline, API skeleton", "ML + Platform", "Candidate meets latency baseline"],
-                                ["3", "Integration", "Knowledge ingestion, authentication, escalation", "Platform + Support", "End-to-end happy path works"],
-                                ["4", "Quality", "Hindi/English evaluation, policy tests, red-team cases", "ML + QA", "Quality threshold met"],
-                                ["5", "Reliability", "Load, failover, monitoring, runbooks", "SRE + Security", "Pilot SLO and controls pass"],
-                                ["6", "Pilot", "Controlled release, daily review, go/no-go report", "Product + Support", "Production recommendation signed"],
+                                [
+                                    "1",
+                                    "Discovery",
+                                    "Traffic assumptions, intents, data and hardware inventory",
+                                    "Product + Infra",
+                                    "Scope and test plan approved",
+                                ],
+                                [
+                                    "2",
+                                    "Foundation",
+                                    "Model benchmark, retrieval baseline, API skeleton",
+                                    "ML + Platform",
+                                    "Candidate meets latency baseline",
+                                ],
+                                [
+                                    "3",
+                                    "Integration",
+                                    "Knowledge ingestion, authentication, escalation",
+                                    "Platform + Support",
+                                    "End-to-end happy path works",
+                                ],
+                                [
+                                    "4",
+                                    "Quality",
+                                    "Hindi/English evaluation, policy tests, red-team cases",
+                                    "ML + QA",
+                                    "Quality threshold met",
+                                ],
+                                [
+                                    "5",
+                                    "Reliability",
+                                    "Load, failover, monitoring, runbooks",
+                                    "SRE + Security",
+                                    "Pilot SLO and controls pass",
+                                ],
+                                [
+                                    "6",
+                                    "Pilot",
+                                    "Controlled release, daily review, go/no-go report",
+                                    "Product + Support",
+                                    "Production recommendation signed",
+                                ],
                             ],
                         },
                     },
@@ -378,11 +452,41 @@ class FakeLLM:
                         "table": {
                             "headers": ["Risk", "Likelihood", "Impact", "Mitigation", "Owner"],
                             "rows": [
-                                ["Hindi terminology errors", "Medium", "High", "Native-speaker review and domain glossary", "QA Lead"],
-                                ["Hardware saturation", "High", "High", "Capacity test, queue limits, and graceful fallback", "Infra Lead"],
-                                ["Stale knowledge", "Medium", "High", "Named content owners and freshness checks", "Support Lead"],
-                                ["Unsupported SLO expectation", "High", "High", "Pilot SLO and signed production gate", "Sponsor"],
-                                ["Sensitive data exposure", "Medium", "High", "Access control, redaction, and audit logging", "Security"],
+                                [
+                                    "Hindi terminology errors",
+                                    "Medium",
+                                    "High",
+                                    "Native-speaker review and domain glossary",
+                                    "QA Lead",
+                                ],
+                                [
+                                    "Hardware saturation",
+                                    "High",
+                                    "High",
+                                    "Capacity test, queue limits, and graceful fallback",
+                                    "Infra Lead",
+                                ],
+                                [
+                                    "Stale knowledge",
+                                    "Medium",
+                                    "High",
+                                    "Named content owners and freshness checks",
+                                    "Support Lead",
+                                ],
+                                [
+                                    "Unsupported SLO expectation",
+                                    "High",
+                                    "High",
+                                    "Pilot SLO and signed production gate",
+                                    "Sponsor",
+                                ],
+                                [
+                                    "Sensitive data exposure",
+                                    "Medium",
+                                    "High",
+                                    "Access control, redaction, and audit logging",
+                                    "Security",
+                                ],
                             ],
                         },
                     },
@@ -435,11 +539,41 @@ class FakeLLM:
                     "table": {
                         "headers": ["Phase", "Timing", "Activities", "Owner", "Exit milestone"],
                         "rows": [
-                            ["Discover", "Days 1-15", "Baseline tickets, select intents, audit knowledge, confirm controls", "Product Lead", "Scope and measures approved"],
-                            ["Build", "Days 16-35", "Configure retrieval, conversation flows, access and escalation", "Tech Lead", "End-to-end test passes"],
-                            ["Validate", "Days 36-50", "Quality, privacy, security and employee usability testing", "QA Lead", "Pilot readiness signed"],
-                            ["Pilot", "Days 51-70", "Release to 50 employees, review failures and improve content", "Service Desk", "Pilot gates achieved"],
-                            ["Roll out", "Days 71-90", "Stage company access, train support, publish runbook", "Change Lead", "Operational handover complete"],
+                            [
+                                "Discover",
+                                "Days 1-15",
+                                "Baseline tickets, select intents, audit knowledge, confirm controls",
+                                "Product Lead",
+                                "Scope and measures approved",
+                            ],
+                            [
+                                "Build",
+                                "Days 16-35",
+                                "Configure retrieval, conversation flows, access and escalation",
+                                "Tech Lead",
+                                "End-to-end test passes",
+                            ],
+                            [
+                                "Validate",
+                                "Days 36-50",
+                                "Quality, privacy, security and employee usability testing",
+                                "QA Lead",
+                                "Pilot readiness signed",
+                            ],
+                            [
+                                "Pilot",
+                                "Days 51-70",
+                                "Release to 50 employees, review failures and improve content",
+                                "Service Desk",
+                                "Pilot gates achieved",
+                            ],
+                            [
+                                "Roll out",
+                                "Days 71-90",
+                                "Stage company access, train support, publish runbook",
+                                "Change Lead",
+                                "Operational handover complete",
+                            ],
                         ],
                     },
                 },
@@ -464,11 +598,41 @@ class FakeLLM:
                     "table": {
                         "headers": ["Risk", "Likelihood", "Impact", "Mitigation", "Owner"],
                         "rows": [
-                            ["Stale knowledge", "Medium", "High", "Named owners, expiry dates, and review queue", "Content Owners"],
-                            ["Incorrect answer", "Medium", "High", "Grounded retrieval, confidence threshold, escalation", "Tech Lead"],
-                            ["Low adoption", "Medium", "Medium", "Pilot champions, channel placement, and training", "Change Lead"],
-                            ["Privacy exposure", "Low", "High", "Data minimization, access controls, and audit logs", "Security"],
-                            ["Service desk overload", "Low", "Medium", "Staged rollout and monitored escalation volume", "Service Desk"],
+                            [
+                                "Stale knowledge",
+                                "Medium",
+                                "High",
+                                "Named owners, expiry dates, and review queue",
+                                "Content Owners",
+                            ],
+                            [
+                                "Incorrect answer",
+                                "Medium",
+                                "High",
+                                "Grounded retrieval, confidence threshold, escalation",
+                                "Tech Lead",
+                            ],
+                            [
+                                "Low adoption",
+                                "Medium",
+                                "Medium",
+                                "Pilot champions, channel placement, and training",
+                                "Change Lead",
+                            ],
+                            [
+                                "Privacy exposure",
+                                "Low",
+                                "High",
+                                "Data minimization, access controls, and audit logs",
+                                "Security",
+                            ],
+                            [
+                                "Service desk overload",
+                                "Low",
+                                "Medium",
+                                "Staged rollout and monitored escalation volume",
+                                "Service Desk",
+                            ],
                         ],
                     },
                 },
@@ -483,9 +647,19 @@ class FakeLLM:
                         "headers": ["Measure", "Pilot target", "Day-90 target", "Source"],
                         "rows": [
                             ["Correct resolution", ">= 85%", ">= 90%", "Reviewed test set"],
-                            ["Self-service containment", ">= 35%", ">= 50%", "Chat and ticket logs"],
+                            [
+                                "Self-service containment",
+                                ">= 35%",
+                                ">= 50%",
+                                "Chat and ticket logs",
+                            ],
                             ["Employee satisfaction", ">= 4.0/5", ">= 4.2/5", "Post-chat survey"],
-                            ["p95 response time", "< 5 seconds", "< 4 seconds", "Service telemetry"],
+                            [
+                                "p95 response time",
+                                "< 5 seconds",
+                                "< 4 seconds",
+                                "Service telemetry",
+                            ],
                             ["Critical privacy incidents", "0", "0", "Security register"],
                         ],
                     },

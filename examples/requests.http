@@ -1,14 +1,20 @@
-### Standard
+# With accounts enabled, first sign in through /api/auth/login and keep its session cookie.
+# Set csrf below to the returned csrf_token. Do not commit real tokens or credentials.
+@csrf = replace-with-your-session-csrf-token
+
+### Standard (uses live model quota)
 POST http://127.0.0.1:8000/agent
 Content-Type: application/json
+X-CSRF-Token: {{csrf}}
 
 {
   "request": "Create a 90-day implementation plan for introducing an internal employee helpdesk chatbot in a company with 500 employees. Include objectives, project phases, owners, milestones, major risks, mitigations, and measurable success metrics."
 }
 
-### Complex
+### Complex (uses live model quota)
 POST http://127.0.0.1:8000/agent
 Content-Type: application/json
+X-CSRF-Token: {{csrf}}
 
 {
   "request": "Create a technical proposal for an autonomous customer support agent that must launch within 6 weeks. It must run completely on-premise, support Hindi and English, use only open-source models, remain within a budget of INR 3 lakh, support 10,000 concurrent users, and provide 99.99 percent availability. Important technical and organizational details are missing, so make reasonable assumptions and clearly identify conflicts, risks, and decisions."

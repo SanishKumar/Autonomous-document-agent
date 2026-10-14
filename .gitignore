@@ -11,3 +11,8 @@ outputs/.test-*/
 htmlcov/
 outputs/*.docx
 outputs/rendered/
+outputs/*.sqlite3*
+outputs/.setup-token
+outputs/exports/
+outputs/.ui-test/
+outputs/screenshots/

@@ -47,7 +47,7 @@ class ExecutionPlan(BaseModel):
     tasks: Annotated[list[PlannedTask], Field(min_length=5, max_length=6)]
 
     @model_validator(mode="after")
-    def validate_task_graph(self) -> "ExecutionPlan":
+    def validate_task_graph(self) -> ExecutionPlan:
         ids = [task.id for task in self.tasks]
         if len(ids) != len(set(ids)):
             raise ValueError("task ids must be unique")
@@ -133,7 +133,7 @@ class DocumentTable(BaseModel):
     rows: list[list[str]] = Field(min_length=1, max_length=30)
 
     @model_validator(mode="after")
-    def validate_row_widths(self) -> "DocumentTable":
+    def validate_row_widths(self) -> DocumentTable:
         width = len(self.headers)
         if any(len(row) != width for row in self.rows):
             raise ValueError("every table row must have the same number of cells as headers")
@@ -148,12 +148,9 @@ class DraftSection(BaseModel):
     table: DocumentTable | None = None
 
     @model_validator(mode="after")
-    def require_content(self) -> "DraftSection":
+    def require_content(self) -> DraftSection:
         has_content = (
-            self.paragraphs
-            or self.bullets
-            or self.numbered_items
-            or self.table is not None
+            self.paragraphs or self.bullets or self.numbered_items or self.table is not None
         )
         if not has_content:
             raise ValueError(
@@ -206,6 +203,9 @@ class AgentResponse(BaseModel):
     initial_quality_score: int
     quality_score: int
     revised: bool
+    review_passed: bool = False
+    review_issues: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
     reflection_feedback: list[str]
     summary: str
     document_url: str

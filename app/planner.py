@@ -87,23 +87,15 @@ class Planner:
         previous_id: str | None = None
         for task in retained:
             dependencies = [
-                id_map[dependency]
-                for dependency in task.depends_on
-                if dependency in id_map
+                id_map[dependency] for dependency in task.depends_on if dependency in id_map
             ]
             if not dependencies and previous_id is not None:
                 dependencies = [previous_id]
             current_id = id_map[task.id]
-            rebuilt.append(
-                task.model_copy(
-                    update={"id": current_id, "depends_on": dependencies}
-                )
-            )
+            rebuilt.append(task.model_copy(update={"id": current_id, "depends_on": dependencies}))
             previous_id = current_id
 
-        return ExecutionPlan.model_validate(
-            plan.model_copy(update={"tasks": rebuilt}).model_dump()
-        )
+        return ExecutionPlan.model_validate(plan.model_copy(update={"tasks": rebuilt}).model_dump())
 
     @staticmethod
     def _remove_unrequested_solution_choices(
@@ -115,8 +107,7 @@ class Planner:
             marker in request for marker in ("vendor", "licens", "commercial support")
         )
         deployment_requested = any(
-            marker in request
-            for marker in ("cloud", "on-premise", "on premise", "in-house")
+            marker in request for marker in ("cloud", "on-premise", "on premise", "in-house")
         )
 
         def keep(value: str) -> bool:
@@ -129,9 +120,8 @@ class Planner:
                 marker in lowered for marker in ("cloud-based", "developed in-house")
             ):
                 return False
-            if (
-                "limited it resources" in lowered
-                and not any(marker in request for marker in ("resource", "staff", "team capacity"))
+            if "limited it resources" in lowered and not any(
+                marker in request for marker in ("resource", "staff", "team capacity")
             ):
                 return False
             if (
@@ -150,9 +140,7 @@ class Planner:
         return plan.model_copy(
             update={
                 "constraints": [value for value in plan.constraints if keep(value)],
-                "missing_information": [
-                    value for value in plan.missing_information if keep(value)
-                ],
+                "missing_information": [value for value in plan.missing_information if keep(value)],
                 "assumptions": [value for value in plan.assumptions if keep(value)],
                 "decisions": [value for value in plan.decisions if keep(value)],
             }

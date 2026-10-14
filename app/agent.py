@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.config import Settings
 from app.document_builder import DocumentBuilder
+from app.events import EventSink, emit
 from app.executor import ExecutionError, TaskExecutor
 from app.llm import JsonLLM, build_llm
 from app.planner import Planner
@@ -40,9 +41,16 @@ class AgentService:
         )
         self._executor = TaskExecutor(tools.registry)
 
-    async def run(self, user_request: str) -> AgentResponse:
-        request_id = uuid4().hex[:8]
+    async def run(
+        self,
+        user_request: str,
+        *,
+        request_id: str | None = None,
+        on_event: EventSink | None = None,
+    ) -> AgentResponse:
+        request_id = request_id or uuid4().hex[:8]
         started = perf_counter()
+        await emit(on_event, "planning_started")
         try:
             planning = await self._planner.create_plan(user_request)
         except Exception as exc:
@@ -57,8 +65,9 @@ class AgentService:
             original_request=user_request,
             plan=planning.plan,
         )
+        await emit(on_event, "plan_ready", plan=planning.plan.model_dump(), source=planning.source)
         try:
-            execution_log = await self._executor.execute(planning.plan, state)
+            execution_log = await self._executor.execute(planning.plan, state, on_event)
         except ExecutionError as exc:
             raise AgentRunError(
                 request_id=request_id,
@@ -88,6 +97,17 @@ class AgentService:
         if state.resolution is not None:
             decisions.extend(item.decision for item in state.resolution.decisions)
 
+        await emit(
+            on_event,
+            "artifact_ready",
+            plan=planning.plan.model_dump(),
+            draft=state.draft.model_dump(),
+            review=state.review.model_dump(),
+            resolution=state.resolution.model_dump() if state.resolution else None,
+            assumptions=assumptions,
+            warnings=state.warnings,
+        )
+
         return AgentResponse(
             request_id=request_id,
             status="completed",
@@ -112,6 +132,12 @@ class AgentService:
             initial_quality_score=state.initial_review.score,
             quality_score=state.review.score,
             revised=state.revised,
+            review_passed=state.review.passed,
+            review_issues=AgentTools._merge_unique(
+                state.review.missing_items,
+                state.review.contradictions,
+            ),
+            warnings=state.warnings,
             reflection_feedback=state.initial_review.revision_instructions,
             summary=(
                 f"Created a reviewed {planning.plan.document_type.lower()} with "

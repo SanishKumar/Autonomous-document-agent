@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Awaitable, Callable, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -77,8 +78,7 @@ class AgentTools:
 
     async def analyze_requirements(self, task: PlannedTask, state: AgentState) -> str:
         prompt = (
-            f"Original request:\n{state.original_request}\n\n"
-            f"Planner output:\n{as_json(state.plan)}"
+            f"Original request:\n{state.original_request}\n\nPlanner output:\n{as_json(state.plan)}"
         )
         state.analysis = await self._validated_call(
             RequirementAnalysis, REQUIREMENTS_SYSTEM, prompt
@@ -128,9 +128,7 @@ class AgentTools:
             "constraint_resolution": state.resolution,
             "outline": state.outline,
         }
-        state.draft = await self._validated_call(
-            DocumentDraft, DRAFT_SYSTEM, as_json(context)
-        )
+        state.draft = await self._validated_call(DocumentDraft, DRAFT_SYSTEM, as_json(context))
         return f"Drafted {len(state.draft.sections)} structured sections."
 
     async def review_document(self, task: PlannedTask, state: AgentState) -> str:
@@ -140,7 +138,7 @@ class AgentTools:
         state.initial_review = state.review
         initial_score = state.initial_review.score
 
-        while state.review.score < self._review_threshold and state.revision_count < 2:
+        while not state.review.passed and state.revision_count < 2:
             revision_context = {
                 "original_request": state.original_request,
                 "plan": state.plan,
@@ -148,15 +146,19 @@ class AgentTools:
                 "review": state.review,
                 "revision_attempt": state.revision_count + 1,
             }
+            previous_draft = state.draft
             try:
                 state.draft = await self._validated_call(
                     DocumentDraft, REVISION_SYSTEM, as_json(revision_context)
                 )
+                state.review = await self._review(state)
                 state.revised = True
                 state.revision_count += 1
-                state.review = await self._review(state)
             except Exception as exc:  # A usable reviewed draft is preferable to losing the result.
-                state.warnings.append(f"Revision was skipped after an error: {exc}")
+                state.draft = previous_draft
+                state.warnings.append(
+                    f"Revision could not finish ({type(exc).__name__}). The last draft is retained for human review."
+                )
                 break
 
         return (
@@ -197,53 +199,17 @@ class AgentTools:
                 update={
                     "score": min(review.score, self._review_threshold - 1),
                     "passed": False,
-                    "missing_items": self._merge_unique(
-                        review.missing_items, audit_issues
-                    )[:12],
+                    "missing_items": self._merge_unique(review.missing_items, audit_issues)[:12],
                     "revision_instructions": self._merge_unique(
                         review.revision_instructions, audit_instructions
                     )[:12],
                 }
             )
-        elif (
-            review.score < self._review_threshold
-            and not review.missing_items
+        expected_passed = (
+            review.score >= self._review_threshold
             and not review.contradictions
-            and not review.revision_instructions
-        ):
-            review = review.model_copy(
-                update={
-                    "score": self._review_threshold,
-                    "passed": True,
-                    "strengths": self._merge_unique(
-                        review.strengths,
-                        [
-                            "The draft passed the deterministic coverage and evidence guardrails."
-                        ],
-                    )[:10],
-                }
-            )
-        elif (
-            review.score < self._review_threshold
-            and state.revision_count >= 2
-            and not review.contradictions
-            and not self._is_complex_request(state.original_request)
-        ):
-            review = review.model_copy(
-                update={
-                    "score": self._review_threshold,
-                    "passed": True,
-                    "strengths": self._merge_unique(
-                        review.strengths,
-                        [
-                            "The revised draft passed the deterministic acceptance rubric; remaining model suggestions are advisory."
-                        ],
-                    )[:10],
-                    "missing_items": [],
-                    "revision_instructions": [],
-                }
-            )
-        expected_passed = review.score >= self._review_threshold
+            and not audit_issues
+        )
         if review.passed != expected_passed:
             review = review.model_copy(update={"passed": expected_passed})
         return review
@@ -376,9 +342,7 @@ class AgentTools:
             marker in request
             for marker in ("budget", "cost", "inr", "usd", "eur", "rupee", "dollar", "$")
         )
-        has_currency = bool(
-            re.search(r"(?:\$|₹|\b(?:inr|usd|eur)\b)\s*[\d,]+", combined)
-        )
+        has_currency = bool(re.search(r"(?:\$|₹|\b(?:inr|usd|eur)\b)\s*[\d,]+", combined))
         if has_currency and not budget_requested:
             issues.append("The draft invents a currency amount not requested by the user.")
             instructions.append(
@@ -435,14 +399,15 @@ class AgentTools:
             )
 
         if "bert" in combined and "bert" not in request:
-            issues.append("The draft selects BERT without benchmark evidence for the requested agent.")
+            issues.append(
+                "The draft selects BERT without benchmark evidence for the requested agent."
+            )
             instructions.append(
                 "Use a benchmark-selected open-source instruction model and define language, quality, latency, and hardware evaluation gates."
             )
 
         conflicting_scale_request = all(
-            marker in request
-            for marker in ("on-premise", "budget", "10,000", "99.99")
+            marker in request for marker in ("on-premise", "budget", "10,000", "99.99")
         )
         if conflicting_scale_request:
             if "pilot" not in combined:
@@ -476,9 +441,7 @@ class AgentTools:
                 if "budget" not in section.heading.casefold() or section.table is None:
                     continue
                 total_rows = [
-                    row
-                    for row in section.table.rows
-                    if row and "total" in row[0].casefold()
+                    row for row in section.table.rows if row and "total" in row[0].casefold()
                 ]
                 rows_to_measure = total_rows or section.table.rows
                 amounts: list[float] = []
@@ -530,8 +493,7 @@ class AgentTools:
             marker in request for marker in ("vendor", "licens", "commercial support")
         )
         deployment_requested = any(
-            marker in request
-            for marker in ("cloud", "on-premise", "on premise", "in-house")
+            marker in request for marker in ("cloud", "on-premise", "on premise", "in-house")
         )
 
         def keep(value: str) -> bool:
@@ -544,9 +506,8 @@ class AgentTools:
                 marker in lowered for marker in ("cloud-based", "developed in-house")
             ):
                 return False
-            if (
-                "limited it resources" in lowered
-                and not any(marker in request for marker in ("resource", "staff", "team capacity"))
+            if "limited it resources" in lowered and not any(
+                marker in request for marker in ("resource", "staff", "team capacity")
             ):
                 return False
             if (
@@ -586,8 +547,7 @@ class AgentTools:
             lowered = value.casefold()
             if "vendor" in lowered or "licens" in lowered or "sla" in lowered:
                 return not any(
-                    marker in request
-                    for marker in ("vendor", "licens", "commercial support")
+                    marker in request for marker in ("vendor", "licens", "commercial support")
                 )
             if "employee technical proficiency" in lowered:
                 return "technical proficiency" not in request
@@ -600,11 +560,14 @@ class AgentTools:
                 )
             if any(
                 marker in lowered
-                for marker in ("specific chatbot platform", "select a platform", "platform selection")
+                for marker in (
+                    "specific chatbot platform",
+                    "select a platform",
+                    "platform selection",
+                )
             ):
                 return not any(
-                    marker in request
-                    for marker in ("platform", "technology", "model", "framework")
+                    marker in request for marker in ("platform", "technology", "model", "framework")
                 )
             if "resource allocation" in lowered or "limited it resources" in lowered:
                 return not any(
@@ -616,7 +579,8 @@ class AgentTools:
                 )
             if "review and update" in lowered or "review/update" in lowered:
                 return not any(
-                    marker in request for marker in ("governance", "review process", "update process")
+                    marker in request
+                    for marker in ("governance", "review process", "update process")
                 )
             return False
 
@@ -626,9 +590,7 @@ class AgentTools:
                     value for value in review.missing_items if not is_non_blocking(value)
                 ],
                 "revision_instructions": [
-                    value
-                    for value in review.revision_instructions
-                    if not is_non_blocking(value)
+                    value for value in review.revision_instructions if not is_non_blocking(value)
                 ],
             }
         )
@@ -664,6 +626,7 @@ class AgentTools:
         """Repair a small set of safe omissions before strict schema validation."""
         normalized = dict(payload)
         if model_type is DocumentDraft:
+
             def clean_numeric_placeholders(value: object) -> object:
                 if isinstance(value, str):
                     cleaned = re.sub(r"<(\d+(?:\.\d+)?%?)>", r"\1", value)
@@ -693,10 +656,7 @@ class AgentTools:
                 if isinstance(value, list):
                     return [clean_numeric_placeholders(item) for item in value]
                 if isinstance(value, dict):
-                    return {
-                        key: clean_numeric_placeholders(item)
-                        for key, item in value.items()
-                    }
+                    return {key: clean_numeric_placeholders(item) for key, item in value.items()}
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     return str(value)
                 return value

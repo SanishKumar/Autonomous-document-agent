@@ -3,10 +3,10 @@ import shutil
 from pathlib import Path
 from uuid import uuid4
 
-from docx import Document
-from docx.oxml.ns import qn
 import httpx
 import pytest
+from docx import Document
+from docx.oxml.ns import qn
 
 from app.agent import AgentService
 from app.config import Settings
@@ -29,7 +29,7 @@ def output_dir() -> Path:
 
 
 def build_app(tmp_path: Path):
-    settings = Settings(outputs_dir=tmp_path)
+    settings = Settings(outputs_dir=tmp_path, auth_enabled=False)
     service = AgentService(settings, llm=FakeLLM())
     return create_app(service=service, settings=settings)
 
@@ -67,9 +67,7 @@ def assert_layout_tokens(document_path: Path) -> None:
         assert table_width.get(qn("w:type")) == "dxa"
         assert int(table_width.get(qn("w:w"))) == 9360
         assert int(table_indent.get(qn("w:w"))) == 120
-        grid_widths = [
-            int(column.get(qn("w:w"))) for column in table._tbl.tblGrid.gridCol_lst
-        ]
+        grid_widths = [int(column.get(qn("w:w"))) for column in table._tbl.tblGrid.gridCol_lst]
         assert sum(grid_widths) == 9360
         header_marker = table.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader"))
         assert header_marker is not None
@@ -183,7 +181,7 @@ def test_download_rejects_unsafe_filename(output_dir: Path) -> None:
 
 
 def test_json_normalizer_handles_markdown_fences() -> None:
-    payload = extract_json_object("```json\n{\"status\": \"ok\", \"count\": 2}\n```")
+    payload = extract_json_object('```json\n{"status": "ok", "count": 2}\n```')
     assert payload == {"status": "ok", "count": 2}
 
 
@@ -251,9 +249,7 @@ def test_deterministic_review_rejects_vague_metrics_and_raw_identifiers() -> Non
         "based on 100 tickets per week.",
     ]
     metrics = next(
-        section
-        for section in draft_payload["sections"]
-        if section["heading"] == "Success metrics"
+        section for section in draft_payload["sections"] if section["heading"] == "Success metrics"
     )
     metrics["paragraphs"] = []
     metrics["bullets"] = [
@@ -287,16 +283,10 @@ def test_draft_normalizer_repairs_missing_conclusion() -> None:
     payload = FakeLLM._draft(complex_request=False, revised=False)
     payload.pop("conclusion")
     payload["executive_summary"] += " Reach <50%> adoption in <6> weeks."
-    payload["sections"][0]["bullets"].append(
-        "Achieve 80% accuracy as an objective"
-    )
-    payload["sections"][0]["bullets"].append(
-        "Document Revisor owns plan maintenance"
-    )
+    payload["sections"][0]["bullets"].append("Achieve 80% accuracy as an objective")
+    payload["sections"][0]["bullets"].append("Document Revisor owns plan maintenance")
     metrics = next(
-        section
-        for section in payload["sections"]
-        if section["heading"] == "Success metrics"
+        section for section in payload["sections"] if section["heading"] == "Success metrics"
     )
     metrics["table"]["rows"][0][1] = 2
 
@@ -334,6 +324,4 @@ def test_review_filter_keeps_requested_defects_and_drops_unrequested_choices() -
     )
 
     assert filtered.missing_items == ["Success metrics need numeric targets."]
-    assert filtered.revision_instructions == [
-        "Add measurable targets and measurement methods."
-    ]
+    assert filtered.revision_instructions == ["Add measurable targets and measurement methods."]

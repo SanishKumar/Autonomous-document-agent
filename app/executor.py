@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
+from app.events import EventSink, emit
 from app.schemas import ExecutionPlan, TaskExecution
 from app.tools import AgentState, ToolFunction
 
@@ -18,7 +19,7 @@ class TaskExecutor:
         self._registry = registry
 
     async def execute(
-        self, plan: ExecutionPlan, state: AgentState
+        self, plan: ExecutionPlan, state: AgentState, on_event: EventSink | None = None
     ) -> list[TaskExecution]:
         log: list[TaskExecution] = []
         completed: set[str] = set()
@@ -53,6 +54,7 @@ class TaskExecutor:
                 raise ExecutionError(task.id, message, log)
 
             started = perf_counter()
+            await emit(on_event, "task_started", task=task.model_dump())
             try:
                 summary = await tool(task, state)
             except Exception as exc:
@@ -66,6 +68,7 @@ class TaskExecutor:
                     error=str(exc),
                 )
                 log.append(entry)
+                await emit(on_event, "task_failed", entry=entry.model_dump())
                 raise ExecutionError(task.id, str(exc), log) from exc
 
             elapsed = round((perf_counter() - started) * 1000)
@@ -80,6 +83,6 @@ class TaskExecutor:
                 )
             )
             completed.add(task.id)
+            await emit(on_event, "task_completed", entry=log[-1].model_dump())
 
         return log
-

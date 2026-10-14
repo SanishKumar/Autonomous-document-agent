@@ -8,3 +8,5 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+# The formatter owns wrapping; prompt and fixture prose can remain unbroken.
+ignore = ["E501"]

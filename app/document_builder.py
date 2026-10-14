@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from docx import Document
 from docx.document import Document as DocumentObject
@@ -122,7 +123,12 @@ class DocumentBuilder:
         )
         document.core_properties.created = datetime.now(UTC)
         document.core_properties.modified = datetime.now(UTC)
-        document.save(output_path)
+        temporary = output_path.with_suffix(f".{uuid4().hex}.tmp")
+        try:
+            document.save(temporary)
+            temporary.replace(output_path)
+        finally:
+            temporary.unlink(missing_ok=True)
         return output_path
 
     def _configure_document(self, document: DocumentObject) -> None:
@@ -208,9 +214,7 @@ class DocumentBuilder:
         header = section.header
         paragraph = header.paragraphs[0]
         paragraph.paragraph_format.space_after = Pt(0)
-        paragraph.paragraph_format.tab_stops.add_tab_stop(
-            Inches(6.5), WD_TAB_ALIGNMENT.RIGHT
-        )
+        paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(6.5), WD_TAB_ALIGNMENT.RIGHT)
         left = paragraph.add_run(document_type.upper())
         self._format_run(left, 8, MUTED, bold=True)
         right = paragraph.add_run("\tBUSINESS DOCUMENT")
@@ -219,9 +223,7 @@ class DocumentBuilder:
         footer = section.footer
         paragraph = footer.paragraphs[0]
         paragraph.paragraph_format.space_before = Pt(4)
-        paragraph.paragraph_format.tab_stops.add_tab_stop(
-            Inches(6.5), WD_TAB_ALIGNMENT.RIGHT
-        )
+        paragraph.paragraph_format.tab_stops.add_tab_stop(Inches(6.5), WD_TAB_ALIGNMENT.RIGHT)
         left = paragraph.add_run(f"Request {request_id}")
         self._format_run(left, 8, MUTED)
         right = paragraph.add_run("\tPage ")
@@ -283,8 +285,7 @@ class DocumentBuilder:
     def _create_numbering(self, document: DocumentObject, *, kind: str) -> int:
         numbering = document.part.numbering_part.element
         abstract_ids = [
-            int(item.get(qn("w:abstractNumId")))
-            for item in numbering.findall(qn("w:abstractNum"))
+            int(item.get(qn("w:abstractNumId"))) for item in numbering.findall(qn("w:abstractNum"))
         ]
         num_ids = [int(item.get(qn("w:numId"))) for item in numbering.findall(qn("w:num"))]
         abstract_id = max(abstract_ids, default=0) + 1
@@ -337,7 +338,7 @@ class DocumentBuilder:
         number.append(abstract_reference)
         numbering.append(number)
         if kind == "bullet":
-            setattr(document, "_agent_bullet_num_id", num_id)
+            document._agent_bullet_num_id = num_id
         return num_id
 
     def _add_caption(self, document: DocumentObject, label: str) -> None:

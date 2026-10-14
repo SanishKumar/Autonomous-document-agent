@@ -20,9 +20,15 @@ class Settings:
     llm_max_retries: int = 2
     review_threshold: int = 8
     outputs_dir: Path = Path("outputs")
+    max_concurrent_jobs: int = 2
+    max_pending_jobs: int = 20
+    job_timeout_seconds: float = 300.0
+    auth_enabled: bool = True
+    secure_cookies: bool = False
+    session_hours: int = 12
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         if load_dotenv is not None:
             load_dotenv()
 
@@ -52,5 +58,10 @@ class Settings:
             llm_max_retries=int(os.getenv("LLM_MAX_RETRIES", "2")),
             review_threshold=int(os.getenv("REVIEW_THRESHOLD", "8")),
             outputs_dir=Path(os.getenv("OUTPUTS_DIR", "outputs")),
+            max_concurrent_jobs=max(1, min(8, int(os.getenv("MAX_CONCURRENT_JOBS", "2")))),
+            max_pending_jobs=max(1, int(os.getenv("MAX_PENDING_JOBS", "20"))),
+            job_timeout_seconds=max(10, float(os.getenv("JOB_TIMEOUT_SECONDS", "300"))),
+            auth_enabled=os.getenv("AUTH_ENABLED", "true").lower() == "true",
+            secure_cookies=os.getenv("SECURE_COOKIES", "false").lower() == "true",
+            session_hours=max(1, min(72, int(os.getenv("SESSION_HOURS", "12")))),
         )
-
