@@ -284,6 +284,7 @@ node --check app/static/team.js
 node --check app/static/handoffs.js
 node --check app/static/comparison.js
 node --test tests/session-scope.test.mjs
+node --test tests/comparison.test.mjs
 ```
 
 Tests use deterministic model doubles, **not live API calls**. They cover the original standard and
@@ -293,6 +294,7 @@ authentication, CSRF, roles, invitation binding/expiry, session revocation, disc
 Handoff tests cover role checks, duplicate requests, stale versions, unavailable reviewers and
 approval invalidation. Small JavaScript tests ensure responses from an expired UI session cannot
 be accepted after sign-out or a different sign-in.
+Comparison rendering tests check version defaults, collapsed unchanged blocks and escaped document markup.
 Comparison tests cover unchanged drafts, title/table changes, literal markup and missing versions.
 History pagination tests traverse more than 200 events without omissions or duplicates.
 

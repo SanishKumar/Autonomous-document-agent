@@ -24,3 +24,4 @@ jobs:
       - run: node --check app/static/handoffs.js
       - run: node --check app/static/comparison.js
       - run: node --test tests/session-scope.test.mjs
+      - run: node --test tests/comparison.test.mjs
